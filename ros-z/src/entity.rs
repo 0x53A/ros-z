@@ -328,24 +328,18 @@ impl TryFrom<&EndpointEntity> for TopicKE {
     type Error = zenoh::Error;
 
     // <domain_id>/<topic_name>/<topic_type>/<topic_type_hash>
+    // NOTE: Unlike LivelinessKE, the topic key expression uses literal slashes
+    // in the topic name. rmw_zenoh_cpp publishes data on keys like:
+    //   0/imu/data/sensor_msgs::msg::dds_::Imu_/RIHS01_...
+    // NOT with percent-encoded slashes like:
+    //   0/imu%data/sensor_msgs::msg::dds_::Imu_/RIHS01_...
     fn try_from(value: &EndpointEntity) -> std::result::Result<Self, Self::Error> {
         let NodeEntity { domain_id, .. } = value.node;
         let topic = {
             let s = &value.topic;
             let s = s.strip_prefix('/').unwrap_or(s);
             let s = s.strip_suffix('/').unwrap_or(s);
-
-            // Special handling for action services: keep /_action/ as / in key expression
-            // Action services use /_action/ as infrastructure naming, which should be
-            // literal slashes in the Zenoh key expression (like type names)
-            if let Some(pos) = s.find("/_action/") {
-                let (base, action_suffix) = s.split_at(pos);
-                // Mangle the base action name, keep /_action/ as /, mangle the service type
-                let action_suffix = &action_suffix[1..]; // Remove leading /
-                format!("{}/{}", mangle_name(base), action_suffix)
-            } else {
-                mangle_name(s)
-            }
+            s.to_string()
         };
         let type_info = value.type_info.as_ref().map_or(
             format!("{EMPTY_TOPIC_TYPE}/{EMPTY_TOPIC_HASH}"),
