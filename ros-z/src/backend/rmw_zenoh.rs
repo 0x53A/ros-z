@@ -38,15 +38,8 @@ impl KeyExprBackend for RmwZenohBackend {
             let s = &entity.topic;
             let s = s.strip_prefix('/').unwrap_or(s);
             let s = s.strip_suffix('/').unwrap_or(s);
-
-            // Special handling for action services: keep /_action/ as / in key expression
-            if let Some(pos) = s.find("/_action/") {
-                let (base, action_suffix) = s.split_at(pos);
-                let action_suffix = &action_suffix[1..]; // Remove leading /
-                format!("{}/{}", Self::mangle_name(base), action_suffix)
-            } else {
-                Self::mangle_name(s)
-            }
+            
+            s.to_string()
         };
 
         let type_info = entity.type_info.as_ref().map_or(
